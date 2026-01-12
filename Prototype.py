@@ -99,14 +99,6 @@ if menu == "🏠 Home":
 # ==========================================
 # LAMAN 2: PREDIKSI & OUTPUT
 # ==========================================
-Penyebab utama fitur Batch Upload tidak berfungsi pada kode sebelumnya adalah karena kita baru menyiapkan "wadah" (tab) dan komponen uploadnya saja, namun logika pemrosesan datanya belum dimasukkan ke dalam fungsi tombol.
-
-Berikut adalah perbaikan lengkap untuk Laman 2 (Prediksi & Output). Saya sudah menambahkan kode untuk membaca CSV, melakukan perulangan (looping) prediksi untuk setiap baris, dan menampilkan hasilnya dalam tabel yang bisa di-download.
-
-Perbaikan Kode Laman 2 (Batch Upload)
-Ganti bagian elif menu == "🔍 Prediksi & Output": di kode kamu dengan ini:
-
-Python
 
 elif menu == "🔍 Prediksi & Output":
     st.title("🔍 Prediksi Collectibility")
