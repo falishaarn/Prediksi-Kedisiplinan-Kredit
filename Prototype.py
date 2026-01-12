@@ -186,84 +186,71 @@ elif menu == "🔍 Prediksi & Output":
 # LAMAN 3: ANALYTICS
 # ==========================================
 elif menu == "📈 Analytics Dashboard":
-    st.title("📈 Strategic Risk & Liquidity Dashboard")
-    st.markdown("Dashboard ini menyajikan analisis mendalam mengenai profil risiko, likuiditas, dan performa portofolio kredit secara *real-time*.")
-
-    # --- 1. EXECUTIVE SUMMARY (METRIC CARDS) ---
-    st.subheader("Summary Portofolio")
-    c1, c2, c3, c4 = st.columns(4)
+    st.title("📈 Strategic Risk Dashboard")
     
+    # --- 1. METRICS ROW ---
+    c1, c2, c3 = st.columns(3)
     total_os = df_ref['OS'].sum()
     total_saldo = df_ref['Saldo_Rekening'].sum()
-    # Menghitung Loan to Deposit Ratio (LDR) secara makro
-    ldr_avg = (total_os / total_saldo) * 100 if total_saldo > 0 else 0
     
     c1.metric("Total Outstanding", f"Rp {total_os/1e9:.1f} M")
     c2.metric("Total Dana Nasabah", f"Rp {total_saldo/1e9:.1f} M")
-    c3.metric("Loan to Deposit (LDR)", f"{ldr_avg:.1f}%", delta="Rasio Risiko")
-    c4.metric("Risk Status", "Warning" if ldr_avg > 90 else "Safe")
+    c3.metric("Basis Nasabah", f"{len(df_ref):,} Orang")
 
     st.divider()
 
-    # --- 2. RISK MAPPING: OS VS SALDO (SCATTER PLOT KOMPLEKS) ---
-    st.subheader("🎯 Risk Matrix: Hubungan Outstanding vs Saldo")
-    st.write("Grafik ini memetakan posisi nasabah. Fokus pada kuadran **Kanan-Bawah** (Hutang Tinggi & Saldo Rendah).")
+    # --- 2. PREDIKSI PERSENTASE COLL (AI SUMMARY) ---
+    st.subheader("🎯 Ringkasan Prediksi Portofolio (AI Forecast)")
+    st.write("Persentase sebaran level kolektibilitas berdasarkan analisis model terhadap database saat ini.")
     
-    # Menghitung LDR Per nasabah untuk visualisasi warna risiko
-    df_ref['LDR_Ratio'] = (df_ref['OS'] / df_ref['Saldo_Rekening']).replace([np.inf, -np.inf], 0)
+    # Menjalankan prediksi massal untuk sampel data (misal 500 data)
+    # Ini untuk mensimulasikan persentase Coll 1-5
+    df_sample = df_ref.head(500).copy()
+    X_all = df_sample[['FCode', 'OS', 'Disb', 'Saldo_Rekening']].copy()
+    # Mocking prep categories sesuai logika model
+    X_all.columns = ['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)']
+    # Jalankan prediksi (output 0-4, maka +1 agar jadi 1-5)
+    all_preds = model.predict(X_all) + 1
     
-    # Gunakan sampel data agar grafik tidak terlalu padat namun tetap representatif
-    df_risk = df_ref.head(500)
+    # Hitung Persentase
+    pred_counts = pd.Series(all_preds).value_counts(normalize=True).sort_index() * 100
     
-    fig_risk = px.scatter(df_risk, x="OS", y="Saldo_Rekening", 
-                          color="LDR_Ratio", size="Disb",
-                          hover_name="FCode", 
-                          color_continuous_scale="RdYlGn_r", # Merah ke Hijau (dibalik)
-                          title="Mapping Risiko Likuiditas Nasabah (Bubble Size = Plafon Pinjaman)")
+    cols = st.columns(5)
+    coll_names = ["Coll 1 (Lancar)", "Coll 2 (DPK)", "Coll 3 (Kurang Lancar)", "Coll 4 (Diragukan)", "Coll 5 (Macet)"]
+    coll_colors = ["#2ecc71", "#f1c40f", "#e67e22", "#d35400", "#e74c3c"]
     
-    # Menambah garis rata-rata (Quadrant)
-    fig_risk.add_hline(y=df_ref['Saldo_Rekening'].mean(), line_dash="dash", line_color="gray", annotation_text="Avg Saldo")
-    fig_risk.add_vline(x=df_ref['OS'].mean(), line_dash="dash", line_color="gray", annotation_text="Avg OS")
-    
-    st.plotly_chart(fig_risk, use_container_width=True)
-    
+    for i in range(5):
+        val = pred_counts.get(i+1, 0)
+        cols[i].markdown(f"""
+            <div style="background-color:{coll_colors[i]}22; border-left:5px solid {coll_colors[i]}; padding:10px; border-radius:5px">
+                <p style="margin:0; font-size:12px; font-weight:bold; color:{coll_colors[i]}">{coll_names[i]}</p>
+                <h3 style="margin:0; color:{coll_colors[i]}">{val:.1f}%</h3>
+            </div>
+        """, unsafe_allow_html=True)
 
-    # --- 3. DUA KOLOM: FORECAST & UNIT TRENDS ---
-    col_left, col_right = st.columns(2)
-    
-    with col_left:
-        st.subheader("📊 Komposisi Kolektibilitas (AI Forecast)")
-        # Simulasi/Aproksimasi distribusi prediksi AI terhadap data referensi
-        # (Catatan: Ini menggunakan data aktual sebagai proxy distribusi)
-        df_dist = df_ref.head(100).copy()
-        # Contoh distribusi sederhana untuk visualisasi pie
-        counts = [65, 15, 10, 7, 3] # Persentase estimasi Coll 1-5
-        fig_pie = px.pie(values=counts, names=['Coll 1', 'Coll 2', 'Coll 3', 'Coll 4', 'Coll 5'], 
-                         hole=0.4, title="Estimasi Profil Risiko Portofolio (%)",
-                         color_discrete_sequence=px.colors.sequential.RdBu)
-        st.plotly_chart(fig_pie, use_container_width=True)
-        
+    st.write("")
+    # Proyeksi NPL (Coll 3, 4, 5)
+    npl_rate = pred_counts.get(3,0) + pred_counts.get(4,0) + pred_counts.get(5,0)
+    st.warning(f"⚠️ **Proyeksi NPL (Non-Performing Loan): {npl_rate:.2f}%**. Bank perlu menyiapkan cadangan kerugian untuk kategori Coll 3 hingga 5.")
 
-    with col_right:
-        st.subheader("📉 Analisis Tren Pelunasan per FCode")
-        # Menghitung sisa pinjaman relatif terhadap plafon awal (Disb)
-        df_ref['Repayment_Rate'] = ((df_ref['Disb'] - df_ref['OS']) / df_ref['Disb']) * 100
-        df_unit = df_ref.groupby('FCode')['Repayment_Rate'].mean().reset_index().sort_values('Repayment_Rate')
-        
-        fig_line = px.line(df_unit, x='FCode', y='Repayment_Rate', markers=True,
-                           title="Rata-rata Persentase Pelunasan Pinjaman per Unit",
-                           line_shape="spline", color_discrete_sequence=['#2ecc71'])
-        st.plotly_chart(fig_line, use_container_width=True)
-
-    # --- 4. HEATMAP KORELASI (ANALISIS STATISTIK) ---
     st.divider()
-    st.subheader("🌡️ Heatmap Korelasi Variabel")
-    st.write("Melihat hubungan antar variabel keuangan. Angka mendekati 1 berarti korelasi sangat kuat.")
-    
-    corr = df_ref[['OS', 'Disb', 'Saldo_Rekening']].corr()
-    fig_heat = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r',
-                         title="Matrix Korelasi OS, Disb, dan Saldo")
-    st.plotly_chart(fig_heat, use_container_width=True)
+
+    # --- 3. GRAFIK PERBANDINGAN GAP ---
+    st.subheader("📊 Analisis Gap Likuiditas (Top 30 Nasabah)")
+    df_clean = df_ref.head(30)
+    fig_line = go.Figure()
+    fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['OS'], fill='tozeroy', name='Outstanding', line=dict(color='#e74c3c')))
+    fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['Saldo_Rekening'], fill='tonexty', name='Saldo', line=dict(color='#3498db')))
+    fig_line.update_layout(title="Visualisasi Saldo vs Hutang", hovermode="x unified")
+    st.plotly_chart(fig_line, use_container_width=True)
+
+    # --- 4. BOX PLOT ---
+    st.subheader("📦 Rentang Pinjaman per Unit (Box Plot)")
+    top_fcodes = ["CA001", "KJ001", "KP001", "MG001", "RK007"]
+    df_box = df_ref[df_ref['FCode'].isin(top_fcodes)]
+    fig_box = px.box(df_box, x="FCode", y="OS", color="FCode", points="outliers",
+                     title="Deteksi Outlier Pinjaman di Cabang Utama")
+    st.plotly_chart(fig_box, use_container_width=True)
     
 # LAMAN 4: FEATURE INSIGHTS
 # ==========================================
