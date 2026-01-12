@@ -92,7 +92,7 @@ if menu == "🏠 Home":
     with col_a:
         st.metric("Total Sampel Data", f"{len(df_ref):,}")
     with col_b:
-        st.metric("Algoritma AI", "XGBoost Classifier")
+        st.metric("Model yang Digunakan", "XGBoost Classifier")
     
     st.info("Sistem ini memprediksi status kolektibilitas nasabah (1-5) berdasarkan fitur finansial utama.")
 
@@ -128,7 +128,7 @@ elif menu == "🔍 Prediksi & Output":
 
             st.markdown(f"""
                 <div style="background-color: {bg}; padding: 35px; border-radius: 15px; border: 1px solid {txt}33; text-align: center;">
-                    <p style="color: {txt}; font-size: 18px; font-weight: bold; margin: 0;">HASIL PREDIKSI AI</p>
+                    <p style="color: {txt}; font-size: 18px; font-weight: bold; margin: 0;">HASIL PREDIKSI</p>
                     <h1 style="color: {txt}; font-size: 64px; margin: 10px 0;">Collectibility {pred}</h1>
                     <p style="color: {txt}; font-size: 26px; font-weight: 500; margin: 0;">{status}</p>
                 </div>
@@ -187,7 +187,7 @@ elif menu == "🔍 Prediksi & Output":
 # ==========================================
 elif menu == "📈 Analytics Dashboard":
     st.title("📈 Analytics Trends")
-    df_line = df_ref.head(50) # Mengambil sampel 50 data agar grafik tetap bersih
+    df_line = df_ref.head(50)
     
     st.subheader("Tren Perbandingan OS vs Disbursement")
     fig_line = px.line(df_line, y=['OS', 'Disb'], 
