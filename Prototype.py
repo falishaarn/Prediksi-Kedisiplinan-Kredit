@@ -41,12 +41,14 @@ def get_qcut_label(value, series):
     return int(labels.iloc[-1])
 
 # --- SIDEBAR ---
-with st.sidebar:
+wwith st.sidebar:
     st.title("🛡️ Risk Menu")
     st.markdown("---")
-    menu = st.radio("Navigasi", ["🏠 Home", "🔍 Prediksi & Output", "📈 Analytics Dashboard", "🧠 Feature Insights"])
+    if st.button("🏠 Home"): set_menu("🏠 Home")
+    if st.button("🔍 Prediksi & Output"): set_menu("🔍 Prediksi & Output")
+    if st.button("📈 Analytics Dashboard"): set_menu("📈 Analytics Dashboard")
+    if st.button("🧠 Feature Insights"): set_menu("🧠 Feature Insights")
     st.markdown("---")
-    st.caption("Versi 2.1 - Fixed Stability")
 
 df_ref = load_ref()
 model = load_xgb_model()
