@@ -69,7 +69,7 @@ if menu == "🏠 Home":
 # ==========================================
 elif menu == "🔍 Prediksi & Output":
     st.title("🔍 Prediksi Collectibility")
-    t1, t2 = st.tabs(["Single Prediction", "Batch Prediction"])
+    t1, t2 = st.tabs(["Input Tunggal", "Upload Batch"])
     
     with t1:
         with st.form("form_p"):
@@ -82,21 +82,48 @@ elif menu == "🔍 Prediksi & Output":
             
         if btn:
             f_enc = fcode_list.index(f_in) + 1
-            os_c, disb_c, saldo_c = get_qcut_label(os_in, df_ref['OS']), get_qcut_label(disb_in, df_ref['Disb']), get_qcut_label(saldo_in, df_ref['Saldo_Rekening'])
-            X = pd.DataFrame([[f_enc, os_c, disb_c, saldo_c]], columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
+            os_c = get_qcut_label(os_in, df_ref['OS'])
+            disb_c = get_qcut_label(disb_in, df_ref['Disb'])
+            saldo_c = get_qcut_label(saldo_in, df_ref['Saldo_Rekening'])
+            
+            X = pd.DataFrame([[f_enc, os_c, disb_c, saldo_c]], 
+                             columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
+            
             pred = model.predict(X)[0] + 1
             
-            st.divider()
-            st.subheader(f"Hasil Prediksi Collectibility: {pred}")
-            
-            # Gauge Indicator
-            fig = go.Figure(go.Indicator(
-                mode = "gauge+number", value = pred,
-                gauge = {'axis': {'range': [1, 5]},
-                         'steps': [{'range': [1, 2], 'color': "green"},
-                                   {'range': [2, 5], 'color': "red"}]}))
-            st.plotly_chart(fig, use_container_width=True)
+            # --- LOGIKA WARNA PASTEL & STATUS ---
+            if pred == 1:
+                bg_color = "#D4EDDA"  # Hijau Pastel
+                text_color = "#155724"
+                status = "LANCAR"
+            elif pred <= 4:
+                bg_color = "#FFF3CD"  # Kuning Pastel
+                text_color = "#856404"
+                status = "DALAM PENGAWASAN (DPK)"
+            else:
+                bg_color = "#F8D7DA"  # Merah Pastel
+                text_color = "#721C24"
+                status = "NON-PERFORMING LOAN (NPL)"
 
+            # --- TAMPILAN KOTAK HASIL ---
+            st.divider()
+            st.markdown(f"""
+                <div style="
+                    background-color: {bg_color}; 
+                    padding: 30px; 
+                    border-radius: 15px; 
+                    border: 1px solid {text_color}33;
+                    text-align: center;
+                    ">
+                    <p style="color: {text_color}; font-size: 20px; margin: 0; font-weight: bold;">HASIL ANALISIS AI</p>
+                    <h1 style="color: {text_color}; font-size: 60px; margin: 10px 0;">Collectibility {pred}</h1>
+                    <p style="color: {text_color}; font-size: 24px; margin: 0; letter-spacing: 2px;">{status}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.write("") # Spacer
+            st.info(f"Nasabah dengan FCode {f_in} dikategorikan ke level {pred} berdasarkan analisis variabel OS, Disbursement, dan Saldo.")
+            
 # ==========================================
 # LAMAN 3: ANALYTICS (LINE CHART)
 # ==========================================
