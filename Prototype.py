@@ -6,12 +6,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # --- CONFIG ---
-st.set_page_config(page_title="Risk Intelligence Analytics", layout="wide")
+st.set_page_config(page_title="Credit Collectibility Predictor", layout="wide")
 
-# --- CUSTOM CSS (SIDEBAR AESTHETIC & BUTTONS) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
-    /* Hilangkan radio button bulat-bulat di sidebar */
     [data-testid="stSidebarNav"] {display: none;}
     
     /* Style Tombol Navigasi Sidebar */
@@ -69,7 +68,7 @@ def set_menu(name):
 
 # --- SIDEBAR (TANPA BULAT-BULAT) ---
 with st.sidebar:
-    st.title("🛡️ Risk Menu")
+    st.title("Credit Collectibility Predictor")
     st.markdown("---")
     if st.button("🏠 Home"): set_menu("🏠 Home")
     if st.button("🔍 Prediksi & Output"): set_menu("🔍 Prediksi & Output")
@@ -86,7 +85,7 @@ menu = st.session_state.menu
 # LAMAN 1: HOME
 # ==========================================
 if menu == "🏠 Home":
-    st.title("🏦 Credit Collectibility Prediction Dashboard")
+    st.title("🏦 Credit Collectibility Predictor")
     st.write("Navigasikan sistem menggunakan tombol di sidebar untuk memulai analisis.")
     
     col_a, col_b = st.columns(2)
@@ -98,10 +97,10 @@ if menu == "🏠 Home":
     st.info("Sistem ini memprediksi status kolektibilitas nasabah (1-5) berdasarkan fitur finansial utama.")
 
 # ==========================================
-# LAMAN 2: PREDIKSI & OUTPUT (PASTEL CARD)
+# LAMAN 2: PREDIKSI & OUTPUT
 # ==========================================
 elif menu == "🔍 Prediksi & Output":
-    st.title("🔍 Prediksi Collectibility")
+    st.title("🔍 Collectibility Prediction")
     t1, t2 = st.tabs(["Input Tunggal", "Upload Batch"])
     
     with t1:
@@ -141,7 +140,7 @@ elif menu == "🔍 Prediksi & Output":
             st.info(f"Analisis dilakukan terhadap nasabah unit {f_in}. Fitur finansial dikonversi ke skala persentil (1-10) sebelum diproses oleh model XGBoost.")
 
 # ==========================================
-# LAMAN 3: ANALYTICS (LINE CHART)
+# LAMAN 3: ANALYTICS
 # ==========================================
 elif menu == "📈 Analytics Dashboard":
     st.title("📈 Analytics Trends")
