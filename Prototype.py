@@ -243,8 +243,8 @@ elif menu == "📈 Analytics Dashboard":
     st.divider()
 
     # --- 3. GRAFIK PERBANDINGAN GAP (AREA CHART) ---
-    st.subheader("📊 Analisis Gap Likuiditas (Top 30 Nasabah)")
-    df_clean = df_ref.head(30)
+    st.subheader("📊 Analisis Gap Likuiditas")
+    df_clean = df_ref.head(1181)
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['OS'], fill='tozeroy', name='Outstanding', line=dict(color='#e74c3c')))
     fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['Saldo_Rekening'], fill='tonexty', name='Saldo', line=dict(color='#3498db')))
@@ -253,7 +253,9 @@ elif menu == "📈 Analytics Dashboard":
 
     # --- 4. BOX PLOT (DISTRIBUSI UNIT) ---
     st.subheader("📦 Rentang Pinjaman per Unit")
-    top_fcodes = ["CA001", "KJ001", "KP001", "MG001", "RK007"]
+    top_fcodes = ["CA001", "CCB03", "CS0I1", "KJ001", "KJ002", "KJ003", 
+    "KJ004", "KJ006", "KJ007", "KK0A5", "KK0B5", "KP001", 
+    "KP003", "KP007", "KP07A", "MG001", "MJ008", "RK007"]
     df_box = df_ref[df_ref['FCode'].isin(top_fcodes)]
     fig_box = px.box(df_box, x="FCode", y="OS", color="FCode", title="Deteksi Outlier Pinjaman")
     st.plotly_chart(fig_box, use_container_width=True)
