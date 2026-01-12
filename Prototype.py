@@ -76,15 +76,11 @@ if st.button("Proses & Prediksi"):
         st.subheader(f"Hasil Prediksi Collectibility: **{final_score}**")
 
         if final_score == 1:
-            st.success("STATUS: 1")
+            st.success("STATUS: LANCAR")
         elif final_score == 2:
-            st.warning("STATUS: 2")
-        elif final_score == 3:
-            st.warning("STATUS: 3")
-        elif final_score == 4:
-            st.warning("STATUS: 4")
+            st.warning("STATUS: DALAM PERHATIAN KHUSUS")
         else:
-            st.error("STATUS: 5")
+            st.error("STATUS: MACET")
 
     except Exception as e:
         st.error(f"Gagal memproses prediksi. Error: {e}")
