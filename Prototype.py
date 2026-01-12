@@ -199,12 +199,11 @@ elif menu == "📈 Analytics Dashboard":
     st.divider()
 
     # --- 2. PREDIKSI PERSENTASE COLL (PERBAIKAN LOGIKA) ---
-    st.subheader("🎯 Ringkasan Prediksi Portofolio")
+    st.subheader("🎯 Credit Collectibility Prediction Percentage")
     
     # Menyiapkan data untuk prediksi massal
     df_batch = df_ref.head(1181).copy()
     
-    # PROSES DATA: Ubah semua jadi angka agar XGBoost tidak error
     try:
         X_mass = pd.DataFrame()
         # 1. Encode FCode jadi angka urutan
@@ -241,24 +240,6 @@ elif menu == "📈 Analytics Dashboard":
         st.error(f"Gagal memproses prediksi massal: {e}")
 
     st.divider()
-
-    # --- 3. GRAFIK PERBANDINGAN GAP (AREA CHART) ---
-    st.subheader("📊 Analisis Gap Likuiditas")
-    df_clean = df_ref.head(1181)
-    fig_line = go.Figure()
-    fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['OS'], fill='tozeroy', name='Outstanding', line=dict(color='#e74c3c')))
-    fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['Saldo_Rekening'], fill='tonexty', name='Saldo', line=dict(color='#3498db')))
-    fig_line.update_layout(hovermode="x unified", legend=dict(orientation="h", y=1.1))
-    st.plotly_chart(fig_line, use_container_width=True)
-
-    # --- 4. BOX PLOT (DISTRIBUSI UNIT) ---
-    st.subheader("📦 Rentang Pinjaman per Unit")
-    top_fcodes = ["CA001", "CCB03", "CS0I1", "KJ001", "KJ002", "KJ003", 
-    "KJ004", "KJ006", "KJ007", "KK0A5", "KK0B5", "KP001", 
-    "KP003", "KP007", "KP07A", "MG001", "MJ008", "RK007"]
-    df_box = df_ref[df_ref['FCode'].isin(top_fcodes)]
-    fig_box = px.box(df_box, x="FCode", y="OS", color="FCode", title="Deteksi Outlier Pinjaman")
-    st.plotly_chart(fig_box, use_container_width=True)
     
 # LAMAN 4: FEATURE INSIGHTS
 # ==========================================
