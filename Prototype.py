@@ -199,10 +199,10 @@ elif menu == "📈 Analytics Dashboard":
     st.divider()
 
     # --- 2. PREDIKSI PERSENTASE COLL (PERBAIKAN LOGIKA) ---
-    st.subheader("🎯 Ringkasan Prediksi Portofolio (AI Forecast)")
+    st.subheader("🎯 Ringkasan Prediksi Portofolio")
     
     # Menyiapkan data untuk prediksi massal
-    df_batch = df_ref.head(100).copy() # Ambil 100 data untuk simulasi cepat
+    df_batch = df_ref.copy()
     
     # PROSES DATA: Ubah semua jadi angka agar XGBoost tidak error
     try:
