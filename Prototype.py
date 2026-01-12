@@ -126,7 +126,7 @@ elif st.session_state.page == 'batch':
         st.write("### Preview Data:")
         st.dataframe(df_upload.head())
 
-        if st.button("Jalankan Prediksi Massal"):
+        if st.button("Proses Prediksi"):
             try:
                 df_ref = load_reference_data()
                 model = load_xgb_model()
