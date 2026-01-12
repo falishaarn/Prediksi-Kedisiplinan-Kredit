@@ -186,17 +186,48 @@ elif menu == "🔍 Prediksi & Output":
 # LAMAN 3: ANALYTICS
 # ==========================================
 elif menu == "📈 Analytics Dashboard":
-    st.title("📈 Analytics Trends")
-    df_line = df_ref.head(50)
+    st.title("📈 Strategic Analytics Dashboard")
     
-    st.subheader("Tren Perbandingan OS vs Disbursement")
-    fig_line = px.line(df_line, y=['OS', 'Disb'], 
-                       title="Trend Line OS & Disbursement (Sampel)",
-                       line_shape="spline",
-                       color_discrete_map={"OS": "#004aad", "Disb": "#ff4b4b"})
-    fig_line.update_layout(hovermode="x unified")
-    st.plotly_chart(fig_line, use_container_width=True)
+    # Ambil sampel data untuk visualisasi (misal 100 data pertama)
+    df_line = df_ref.head(100)
+    
+    # --- ROW 1: KREDIT PERFORMANCE ---
+    st.subheader("1. Kredit Performance & Gap Analysis")
+    fig_gap = px.line(df_line, y=['Disb', 'OS'], 
+                      title="Tren Pelunasan (Disbursement vs Outstanding)",
+                      line_shape="spline", color_discrete_map={"Disb": "#2ecc71", "OS": "#e74c3c"})
+    st.plotly_chart(fig_gap, use_container_width=True)
 
+    # --- ROW 2: DUA KOLOM (SALDO & KUMULATIF) ---
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        st.subheader("2. Saldo per Unit (FCode)")
+        # Ambil 4 FCode teratas agar tidak terlalu ramai
+        top_fcode = ["CA001", "KJ001", "KP001", "MG001"]
+        df_f = df_line[df_line['FCode'].isin(top_fcode)]
+        fig_f = px.line(df_f, y='Saldo_Rekening', color='FCode', markers=True, title="Fluktuasi Saldo Unit Utama")
+        st.plotly_chart(fig_f, use_container_width=True)
+        
+    with col_right:
+        st.subheader("3. Akumulasi Likuiditas")
+        df_area = df_line.sort_values(by='Saldo_Rekening').reset_index()
+        df_area['Cum_Saldo'] = df_area['Saldo_Rekening'].cumsum()
+        fig_area = px.area(df_area, y='Cum_Saldo', title="Pertumbuhan Kumulatif Saldo", color_discrete_sequence=['#AEC6CF'])
+        st.plotly_chart(fig_area, use_container_width=True)
+
+    # --- ROW 3: ANALISIS KORELASI (KOMPLEKS) ---
+    st.divider()
+    st.subheader("4. Analisis Korelasi Risiko (Outstanding vs Saldo)")
+    st.markdown("Nasabah yang berada di area **kanan bawah** memiliki OS tinggi namun Saldo rendah (Risiko Tinggi).")
+    
+    fig_scatter = px.scatter(df_line, x="OS", y="Saldo_Rekening", 
+                             color="FCode", size="Disb", hover_data=['FCode'],
+                             trendline="ols", # Menambahkan garis trend linear
+                             title="Hubungan Outstanding dengan Saldo Rekening")
+    st.plotly_chart(fig_scatter, use_container_width=True)
+
+    st.info("💡 **Tips Analis:** Garis trend yang menurun menunjukkan bahwa semakin besar pinjaman, saldo nasabah cenderung mengecil. Ini adalah indikator pengetatan likuiditas.")
 # ==========================================
 # LAMAN 4: FEATURE INSIGHTS
 # ==========================================
