@@ -122,7 +122,7 @@ elif menu == "🔍 Prediksi & Output":
                 """, unsafe_allow_html=True)
             
             st.write("") # Spacer
-            st.info(f"Nasabah dengan FCode {f_in} dikategorikan ke level {pred} berdasarkan analisis variabel OS, Disbursement, dan Saldo.")
+            st.info(f"Nasabah ini dikategorikan ke level {pred} berdasarkan analisis FCode {f_in}, variabel OS, Disbursement, dan Saldo.")
             
 # ==========================================
 # LAMAN 3: ANALYTICS (LINE CHART)
