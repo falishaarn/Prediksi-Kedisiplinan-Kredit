@@ -188,68 +188,74 @@ elif menu == "🔍 Prediksi & Output":
 elif menu == "📈 Analytics Dashboard":
     st.title("📈 Strategic Risk Dashboard")
     
-    # --- 1. METRICS ROW ---
+    # --- 1. METRICS ROW (Tetap) ---
     c1, c2, c3 = st.columns(3)
     total_os = df_ref['OS'].sum()
     total_saldo = df_ref['Saldo_Rekening'].sum()
-    
     c1.metric("Total Outstanding", f"Rp {total_os/1e9:.1f} M")
     c2.metric("Total Dana Nasabah", f"Rp {total_saldo/1e9:.1f} M")
     c3.metric("Basis Nasabah", f"{len(df_ref):,} Orang")
 
     st.divider()
 
-    # --- 2. PREDIKSI PERSENTASE COLL (AI SUMMARY) ---
+    # --- 2. PREDIKSI PERSENTASE COLL (PERBAIKAN LOGIKA) ---
     st.subheader("🎯 Ringkasan Prediksi Portofolio (AI Forecast)")
-    st.write("Persentase sebaran level kolektibilitas berdasarkan analisis model terhadap database saat ini.")
     
-    # Menjalankan prediksi massal untuk sampel data (misal 500 data)
-    # Ini untuk mensimulasikan persentase Coll 1-5
-    df_sample = df_ref.head(500).copy()
-    X_all = df_sample[['FCode', 'OS', 'Disb', 'Saldo_Rekening']].copy()
-    # Mocking prep categories sesuai logika model
-    X_all.columns = ['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)']
-    # Jalankan prediksi (output 0-4, maka +1 agar jadi 1-5)
-    all_preds = model.predict(X_all) + 1
+    # Menyiapkan data untuk prediksi massal
+    df_batch = df_ref.head(100).copy() # Ambil 100 data untuk simulasi cepat
     
-    # Hitung Persentase
-    pred_counts = pd.Series(all_preds).value_counts(normalize=True).sort_index() * 100
-    
-    cols = st.columns(5)
-    coll_names = ["Coll 1 (Lancar)", "Coll 2 (DPK)", "Coll 3 (Kurang Lancar)", "Coll 4 (Diragukan)", "Coll 5 (Macet)"]
-    coll_colors = ["#2ecc71", "#f1c40f", "#e67e22", "#d35400", "#e74c3c"]
-    
-    for i in range(5):
-        val = pred_counts.get(i+1, 0)
-        cols[i].markdown(f"""
-            <div style="background-color:{coll_colors[i]}22; border-left:5px solid {coll_colors[i]}; padding:10px; border-radius:5px">
-                <p style="margin:0; font-size:12px; font-weight:bold; color:{coll_colors[i]}">{coll_names[i]}</p>
-                <h3 style="margin:0; color:{coll_colors[i]}">{val:.1f}%</h3>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.write("")
-    # Proyeksi NPL (Coll 3, 4, 5)
-    npl_rate = pred_counts.get(3,0) + pred_counts.get(4,0) + pred_counts.get(5,0)
-    st.warning(f"⚠️ **Proyeksi NPL (Non-Performing Loan): {npl_rate:.2f}%**. Bank perlu menyiapkan cadangan kerugian untuk kategori Coll 3 hingga 5.")
+    # PROSES DATA: Ubah semua jadi angka agar XGBoost tidak error
+    try:
+        X_mass = pd.DataFrame()
+        # 1. Encode FCode jadi angka urutan
+        X_mass['FCode'] = df_batch['FCode'].apply(lambda x: fcode_list.index(x) + 1 if x in fcode_list else 1)
+        
+        # 2. Ubah OS, Disb, Saldo jadi kategori 1-10 (Pakai fungsi get_qcut_label yang sudah ada)
+        X_mass['OS (Category)'] = df_batch['OS'].apply(lambda x: get_qcut_label(x, df_ref['OS']))
+        X_mass['Disb (Category)'] = df_batch['Disb'].apply(lambda x: get_qcut_label(x, df_ref['Disb']))
+        X_mass['Saldo (Category)'] = df_batch['Saldo_Rekening'].apply(lambda x: get_qcut_label(x, df_ref['Saldo_Rekening']))
+        
+        # 3. Jalankan Prediksi
+        mass_preds = model.predict(X_mass) + 1
+        pred_counts = pd.Series(mass_preds).value_counts(normalize=True).sort_index() * 100
+        
+        # Tampilkan kotak persentase
+        cols = st.columns(5)
+        coll_names = ["Coll 1", "Coll 2", "Coll 3", "Coll 4", "Coll 5"]
+        coll_colors = ["#2ecc71", "#f1c40f", "#e67e22", "#d35400", "#e74c3c"]
+        
+        for i in range(5):
+            val = pred_counts.get(i+1, 0)
+            cols[i].markdown(f"""
+                <div style="background-color:{coll_colors[i]}22; border-left:5px solid {coll_colors[i]}; padding:10px; border-radius:5px; text-align:center">
+                    <p style="margin:0; font-size:12px; font-weight:bold; color:{coll_colors[i]}">{coll_names[i]}</p>
+                    <h3 style="margin:0; color:{coll_colors[i]}">{val:.1f}%</h3>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        npl_rate = pred_counts.get(3,0) + pred_counts.get(4,0) + pred_counts.get(5,0)
+        st.write("")
+        st.warning(f"⚠️ **Proyeksi NPL (Non-Performing Loan): {npl_rate:.2f}%**")
+        
+    except Exception as e:
+        st.error(f"Gagal memproses prediksi massal: {e}")
 
     st.divider()
 
-    # --- 3. GRAFIK PERBANDINGAN GAP ---
+    # --- 3. GRAFIK PERBANDINGAN GAP (AREA CHART) ---
     st.subheader("📊 Analisis Gap Likuiditas (Top 30 Nasabah)")
     df_clean = df_ref.head(30)
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['OS'], fill='tozeroy', name='Outstanding', line=dict(color='#e74c3c')))
     fig_line.add_trace(go.Scatter(x=df_clean.index, y=df_clean['Saldo_Rekening'], fill='tonexty', name='Saldo', line=dict(color='#3498db')))
-    fig_line.update_layout(title="Visualisasi Saldo vs Hutang", hovermode="x unified")
+    fig_line.update_layout(hovermode="x unified", legend=dict(orientation="h", y=1.1))
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # --- 4. BOX PLOT ---
-    st.subheader("📦 Rentang Pinjaman per Unit (Box Plot)")
+    # --- 4. BOX PLOT (DISTRIBUSI UNIT) ---
+    st.subheader("📦 Rentang Pinjaman per Unit")
     top_fcodes = ["CA001", "KJ001", "KP001", "MG001", "RK007"]
     df_box = df_ref[df_ref['FCode'].isin(top_fcodes)]
-    fig_box = px.box(df_box, x="FCode", y="OS", color="FCode", points="outliers",
-                     title="Deteksi Outlier Pinjaman di Cabang Utama")
+    fig_box = px.box(df_box, x="FCode", y="OS", color="FCode", title="Deteksi Outlier Pinjaman")
     st.plotly_chart(fig_box, use_container_width=True)
     
 # LAMAN 4: FEATURE INSIGHTS
