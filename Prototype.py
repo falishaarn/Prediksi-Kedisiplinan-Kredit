@@ -202,7 +202,7 @@ elif menu == "📈 Analytics Dashboard":
     st.subheader("🎯 Ringkasan Prediksi Portofolio")
     
     # Menyiapkan data untuk prediksi massal
-    df_batch = df_ref.copy()
+    df_batch = df_ref.head(1181).copy()
     
     # PROSES DATA: Ubah semua jadi angka agar XGBoost tidak error
     try:
