@@ -186,49 +186,81 @@ elif menu == "🔍 Prediksi & Output":
 # LAMAN 3: ANALYTICS
 # ==========================================
 elif menu == "📈 Analytics Dashboard":
-    st.title("📈 Strategic Analytics Dashboard")
+    st.title("📈 Strategic Financial Analytics")
+    st.markdown("Analisis mendalam portofolio kredit dan profil likuiditas nasabah.")
+
+    # --- 1. KEY PERFORMANCE INDICATORS (METRICS) ---
+    # Membuat summary box yang elegan
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        total_os = df_ref['OS'].sum()
+        st.metric("Total Portofolio OS", f"Rp {total_os/1e9:.2f} M", delta="Stabil")
+    with m2:
+        avg_disb = df_ref['Disb'].mean()
+        st.metric("Rata-rata Plafon (Disb)", f"Rp {avg_disb/1e6:.1f} Jt")
+    with m3:
+        n_nasabah = len(df_ref)
+        st.metric("Basis Nasabah", f"{n_nasabah:,} Jiwa")
+
+    st.divider()
+
+    # Ambil data sampel yang lebih bersih (misal 30 data teratas agar line chart tidak berantakan)
+    df_clean = df_ref.head(30)
+
+    # --- 2. GRAFIK UTAMA: KREDIT SEHAT (GAP CHART) ---
+    st.subheader("📊 Analisis Kesehatan Kredit (Plafon vs Sisa Pinjaman)")
+    st.info("💡 Insight: Jika garis merah (OS) mendekati garis hijau (Disb), nasabah tersebut belum melakukan banyak pelunasan.")
     
-    # Ambil sampel data untuk visualisasi (misal 100 data pertama)
-    df_line = df_ref.head(100)
+    fig_gap = go.Figure()
+    # Garis Plafon (Disbursement)
+    fig_gap.add_trace(go.Scatter(x=df_clean.index, y=df_clean['Disb'], name='Plafon Awal',
+                                 line=dict(color='#2ecc71', width=3, dash='dot')))
+    # Garis Sisa Pinjaman (OS)
+    fig_gap.add_trace(go.Scatter(x=df_clean.index, y=df_clean['OS'], name='Sisa Hutang (OS)',
+                                 fill='tonexty', fillcolor='rgba(231, 76, 60, 0.1)', # Efek bayangan merah
+                                 line=dict(color='#e74c3c', width=4)))
     
-    # --- ROW 1: KREDIT PERFORMANCE ---
-    st.subheader("1. Kredit Performance & Gap Analysis")
-    fig_gap = px.line(df_line, y=['Disb', 'OS'], 
-                      title="Tren Pelunasan (Disbursement vs Outstanding)",
-                      line_shape="spline", color_discrete_map={"Disb": "#2ecc71", "OS": "#e74c3c"})
+    fig_gap.update_layout(title="Trend Pelunasan Nasabah", xaxis_title="ID Nasabah", yaxis_title="Nominal (IDR)",
+                          hovermode="x unified", legend=dict(orientation="h", y=1.1))
     st.plotly_chart(fig_gap, use_container_width=True)
 
-    # --- ROW 2: DUA KOLOM (SALDO & KUMULATIF) ---
-    col_left, col_right = st.columns(2)
-    
-    with col_left:
-        st.subheader("2. Saldo per Unit (FCode)")
-        # Ambil 4 FCode teratas agar tidak terlalu ramai
-        top_fcode = ["CA001", "KJ001", "KP001", "MG001"]
-        df_f = df_line[df_line['FCode'].isin(top_fcode)]
-        fig_f = px.line(df_f, y='Saldo_Rekening', color='FCode', markers=True, title="Fluktuasi Saldo Unit Utama")
-        st.plotly_chart(fig_f, use_container_width=True)
-        
-    with col_right:
-        st.subheader("3. Akumulasi Likuiditas")
-        df_area = df_line.sort_values(by='Saldo_Rekening').reset_index()
+    # --- 3. DUA KOLOM: PERBANDINGAN UNIT & DISTRIBUSI ---
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("🏦 Efektivitas Saldo per Unit")
+        # Mengelompokkan rata-rata saldo per FCode agar grafik bar lebih rapi
+        df_avg_fcode = df_ref.groupby('FCode')['Saldo_Rekening'].mean().reset_index().sort_values('Saldo_Rekening', ascending=False)
+        fig_bar = px.bar(df_avg_fcode.head(10), x='FCode', y='Saldo_Rekening', 
+                         title="10 Unit dengan Saldo Tertinggi",
+                         color='Saldo_Rekening', color_continuous_scale='Blues')
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col2:
+        st.subheader("📈 Akumulasi Dana Portofolio")
+        df_area = df_ref.sort_values('Saldo_Rekening').reset_index()
         df_area['Cum_Saldo'] = df_area['Saldo_Rekening'].cumsum()
-        fig_area = px.area(df_area, y='Cum_Saldo', title="Pertumbuhan Kumulatif Saldo", color_discrete_sequence=['#AEC6CF'])
+        fig_area = px.area(df_area, y='Cum_Saldo', title="Pertumbuhan Saldo Kumulatif",
+                           color_discrete_sequence=['#3498db'])
+        fig_area.update_layout(xaxis_title="Jumlah Nasabah", yaxis_title="Total Dana")
         st.plotly_chart(fig_area, use_container_width=True)
 
-    # --- ROW 3: ANALISIS KORELASI (KOMPLEKS) ---
+    # --- 4. GRAFIK RISIKO: SCATTER MAP (TANPA TRENDLINE AGAR STABIL) ---
     st.divider()
-    st.subheader("4. Analisis Korelasi Risiko (Outstanding vs Saldo)")
-    st.markdown("Nasabah yang berada di area **kanan bawah** memiliki OS tinggi namun Saldo rendah (Risiko Tinggi).")
+    st.subheader("🎯 Risk Mapping (Outstanding vs Saldo)")
+    st.write("Melihat posisi nasabah: Fokus pada nasabah dengan OS Tinggi tapi Saldo Rendah.")
     
-    fig_scatter = px.scatter(df_line, x="OS", y="Saldo_Rekening", 
-                             color="FCode", size="Disb", hover_data=['FCode'],
-                             trendline="ols", # Menambahkan garis trend linear
-                             title="Hubungan Outstanding dengan Saldo Rekening")
-    st.plotly_chart(fig_scatter, use_container_width=True)
-
-    st.info("💡 **Tips Analis:** Garis trend yang menurun menunjukkan bahwa semakin besar pinjaman, saldo nasabah cenderung mengecil. Ini adalah indikator pengetatan likuiditas.")
-# ==========================================
+    fig_risk = px.scatter(df_ref.head(200), x="OS", y="Saldo_Rekening", 
+                          size="Disb", color="FCode",
+                          hover_name="FCode", log_x=False, size_max=40,
+                          title="Peta Risiko Nasabah (Top 200 Sampel)")
+    
+    # Menambahkan garis bantu (Quadrant)
+    fig_risk.add_hline(y=df_ref['Saldo_Rekening'].mean(), line_dash="dash", line_color="gray", annotation_text="Rata-rata Saldo")
+    fig_risk.add_vline(x=df_ref['OS'].mean(), line_dash="dash", line_color="gray", annotation_text="Rata-rata OS")
+    
+    st.plotly_chart(fig_risk, use_container_width=True)
+    
 # LAMAN 4: FEATURE INSIGHTS
 # ==========================================
 elif menu == "🧠 Feature Insights":
