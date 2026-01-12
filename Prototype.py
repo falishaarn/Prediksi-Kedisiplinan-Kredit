@@ -2,12 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+import plotly.express as px
+import plotly.graph_objects as go
 import os
 
 # --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Credit Scoring System", layout="centered")
+st.set_page_config(page_title="Credit Collectibility Prediction", layout="wide")
 
-# --- LOAD DATA REFERENSI & MODEL ---
+# --- LOAD DATA & MODEL ---
 @st.cache_data
 def load_reference_data():
     return pd.read_csv('Data TA (Kredit).csv')
@@ -42,117 +44,124 @@ def go_to(page_name):
 # HALAMAN 1: HOME (LANDING PAGE)
 # ==========================================
 if st.session_state.page == 'home':
-    st.title("🏦 Sistem Prediksi Collectibility Kredit")
-    st.subheader("Silakan pilih metode input data:")
-    st.write("---")
+    st.title("🏦 Risk Analytics & Credit Scoring System")
+    st.write("Sistem cerdas analisis kelayakan kredit menggunakan algoritma XGBoost.")
+    st.markdown("---")
     
     col1, col2 = st.columns(2)
-    
     with col1:
-        st.info("### Single Input")
-        st.write("Input data nasabah satu per satu secara manual.")
-        if st.button("Pilih Single Input", use_container_width=True):
+        st.info("### 👤 Single Predictor")
+        st.write("Analisis mendalam untuk satu nasabah dengan laporan visual.")
+        if st.button("Buka Single Predictor", use_container_width=True):
             go_to('single')
             st.rerun()
 
     with col2:
-        st.success("### Batch Input")
-        st.write("Upload file CSV untuk prediksi banyak data sekaligus.")
-        if st.button("Pilih Batch Input (Upload)", use_container_width=True):
+        st.success("### 📂 Batch Processor")
+        st.write("Prediksi massal melalui upload file CSV dan analisis agregat.")
+        if st.button("Buka Batch Processor", use_container_width=True):
             go_to('batch')
             st.rerun()
 
 # ==========================================
-# HALAMAN 2: SINGLE INPUT
+# HALAMAN 2: SINGLE PREDICTION + ANALYTICS
 # ==========================================
 elif st.session_state.page == 'single':
-    if st.button("⬅ Kembali ke Home"):
+    if st.sidebar.button("⬅ Kembali ke Home"):
         go_to('home')
         st.rerun()
         
-    st.title("👤 Single Data Prediction")
-    st.write("---")
+    st.title("👤 Individual Credit Analysis")
     
-    with st.form("form_single"):
-        fcode_input = st.selectbox("Pilih FCode", fcode_list)
-        os_input = st.number_input("Nominal OS", min_value=0.0, value=140562406.0)
-        disb_input = st.number_input("Nominal Disbursement", min_value=0.0, value=210000000.0)
-        saldo_input = st.number_input("Nominal Saldo Rekening", min_value=0.0, value=2530133.0)
-        submit = st.form_submit_button("Proses Prediksi")
+    with st.expander("📝 Form Input Data Mentah", expanded=True):
+        c1, c2 = st.columns(2)
+        fcode_input = c1.selectbox("FCode Nasabah", fcode_list)
+        os_input = c1.number_input("Nominal OS", min_value=0.0, value=150000000.0)
+        disb_input = c2.number_input("Nominal Disbursement", min_value=0.0, value=200000000.0)
+        saldo_input = c2.number_input("Nominal Saldo", min_value=0.0, value=5000000.0)
 
-    if submit:
+    if st.button("Jalankan Analisis Cerdas"):
         try:
             df_ref = load_reference_data()
             model = load_xgb_model()
 
-            fcode_encoded = fcode_list.index(fcode_input) + 1
+            # Transformasi
+            f_enc = fcode_list.index(fcode_input) + 1
             os_cat = get_qcut_label(os_input, df_ref['OS'])
             disb_cat = get_qcut_label(disb_input, df_ref['Disb'])
             saldo_cat = get_qcut_label(saldo_input, df_ref['Saldo_Rekening'])
 
-            input_final = pd.DataFrame({
-                'FCode': [fcode_encoded],
-                'OS (Category)': [os_cat],
-                'Disb (Category)': [disb_cat],
-                'Saldo (Category)': [saldo_cat]
-            })
+            input_final = pd.DataFrame([[f_enc, os_cat, disb_cat, saldo_cat]], 
+                                      columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
 
+            # Prediksi
             prediction = model.predict(input_final)[0] + 1
             
-            st.divider()
-            st.subheader(f"Hasil Prediksi: Collectibility {prediction}")
-            if prediction == 1: st.success("STATUS: 1 (LANCAR)")
-            elif prediction <= 4: st.warning(f"STATUS: {prediction} (DALAM PENGAWASAN)")
-            else: st.error("STATUS: 5 (NPL/MACET)")
+            st.markdown("---")
+            col_res1, col_res2 = st.columns([1, 2])
             
+            with col_res1:
+                st.metric("PREDIKSI KOLEKTIBILITAS", f"Skor: {prediction}")
+                # Gauge Chart
+                fig_gauge = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = prediction,
+                    gauge = {'axis': {'range': [1, 5]},
+                             'steps': [{'range': [1, 2], 'color': "green"},
+                                       {'range': [2, 4], 'color': "orange"},
+                                       {'range': [4, 5], 'color': "red"}]}))
+                st.plotly_chart(fig_gauge, use_container_width=True)
+
+            with col_res2:
+                st.subheader("💡 Analisis Kontribusi (Feature Importance)")
+                # Mengambil importance dari model
+                importance = model.feature_importances_
+                feat_df = pd.DataFrame({'Fitur': input_final.columns, 'Importance': importance}).sort_values(by='Importance')
+                fig_imp = px.bar(feat_df, x='Importance', y='Fitur', orientation='h', title="Faktor Penentu Skor")
+                st.plotly_chart(fig_imp, use_container_width=True)
+
         except Exception as e:
             st.error(f"Error: {e}")
 
 # ==========================================
-# HALAMAN 3: BATCH INPUT (UPLOAD)
+# HALAMAN 3: BATCH PREDICTION + DASHBOARD
 # ==========================================
 elif st.session_state.page == 'batch':
-    if st.button("⬅ Kembali ke Home"):
+    if st.sidebar.button("⬅ Kembali ke Home"):
         go_to('home')
         st.rerun()
 
-    st.title("📂 Batch Prediction (Upload File)")
-    st.write("Pastikan file CSV memiliki kolom: `FCode`, `OS`, `Disb`, `Saldo_Rekening`")
-    
-    uploaded_file = st.file_uploader("Unggah File CSV", type=["csv"])
+    st.title("📂 Batch Analysis Processor")
+    uploaded_file = st.file_uploader("Upload CSV Nasabah", type=["csv"])
 
-    if uploaded_file is not None:
+    if uploaded_file:
         df_upload = pd.read_csv(uploaded_file)
-        st.write("### Preview Data:")
-        st.dataframe(df_upload.head())
-
-        if st.button("Proses Prediksi"):
-            try:
-                df_ref = load_reference_data()
-                model = load_xgb_model()
-                results = []
-                bar = st.progress(0)
-
-                for i, row in df_upload.iterrows():
-                    f_val = fcode_list.index(row['FCode']) + 1 if row['FCode'] in fcode_list else 1
-                    o_cat = get_qcut_label(row['OS'], df_ref['OS'])
-                    d_cat = get_qcut_label(row['Disb'], df_ref['Disb'])
-                    s_cat = get_qcut_label(row['Saldo_Rekening'], df_ref['Saldo_Rekening'])
-                    
-                    input_row = pd.DataFrame([[f_val, o_cat, d_cat, s_cat]], 
-                                            columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
-                    
-                    pred = model.predict(input_row)[0] + 1
-                    results.append(pred)
-                    bar.progress((i + 1) / len(df_upload))
-
-                df_upload['Hasil_Prediksi'] = results
-                st.divider()
-                st.subheader("Hasil Analisis")
+        if st.button("Proses Seluruh Data"):
+            df_ref = load_reference_data()
+            model = load_xgb_model()
+            
+            res = []
+            bar = st.progress(0)
+            for i, row in df_upload.iterrows():
+                f_v = fcode_list.index(row['FCode']) + 1 if row['FCode'] in fcode_list else 1
+                o_c = get_qcut_label(row['OS'], df_ref['OS'])
+                d_c = get_qcut_label(row['Disb'], df_ref['Disb'])
+                s_c = get_qcut_label(row['Saldo_Rekening'], df_ref['Saldo_Rekening'])
+                
+                pred = model.predict(pd.DataFrame([[f_v, o_c, d_c, s_c]], columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)']))[0] + 1
+                res.append(pred)
+                bar.progress((i + 1) / len(df_upload))
+            
+            df_upload['Prediksi'] = res
+            
+            st.divider()
+            c_dash1, c_dash2 = st.columns(2)
+            with c_dash1:
+                st.write("### Distribusi Risiko")
+                fig_pie = px.pie(df_upload, names='Prediksi', hole=0.4)
+                st.plotly_chart(fig_pie)
+            with c_dash2:
+                st.write("### Data Hasil Prediksi")
                 st.dataframe(df_upload)
-
                 csv = df_upload.to_csv(index=False).encode('utf-8')
-                st.download_button("Download Hasil (CSV)", csv, "hasil_prediksi.csv", "text/csv")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat memproses file. Error: {e}")
+                st.download_button("Download Laporan CSV", csv, "report.csv")
