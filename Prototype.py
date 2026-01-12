@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # --- CONFIG ---
-st.set_page_config(page_title="Credit Collectibiliity Prediction", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Credit Collectibility Prediction", layout="wide", initial_sidebar_state="expanded")
 
 # --- CUSTOM CSS UNTUK SIDEBAR & UI ---
 st.markdown("""
