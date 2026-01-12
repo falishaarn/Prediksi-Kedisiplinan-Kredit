@@ -99,10 +99,20 @@ if menu == "🏠 Home":
 # ==========================================
 # LAMAN 2: PREDIKSI & OUTPUT
 # ==========================================
+Penyebab utama fitur Batch Upload tidak berfungsi pada kode sebelumnya adalah karena kita baru menyiapkan "wadah" (tab) dan komponen uploadnya saja, namun logika pemrosesan datanya belum dimasukkan ke dalam fungsi tombol.
+
+Berikut adalah perbaikan lengkap untuk Laman 2 (Prediksi & Output). Saya sudah menambahkan kode untuk membaca CSV, melakukan perulangan (looping) prediksi untuk setiap baris, dan menampilkan hasilnya dalam tabel yang bisa di-download.
+
+Perbaikan Kode Laman 2 (Batch Upload)
+Ganti bagian elif menu == "🔍 Prediksi & Output": di kode kamu dengan ini:
+
+Python
+
 elif menu == "🔍 Prediksi & Output":
-    st.title("🔍 Collectibility Prediction")
+    st.title("🔍 Prediksi Collectibility")
     t1, t2 = st.tabs(["Input Tunggal", "Upload Batch"])
     
+    # --- TAB 1: SINGLE INPUT ---
     with t1:
         with st.form("form_p"):
             c1, c2 = st.columns(2)
@@ -110,35 +120,76 @@ elif menu == "🔍 Prediksi & Output":
             os_in = c1.number_input("Nominal OS", value=140562406.0)
             disb_in = c2.number_input("Nominal Disbursement", value=210000000.0)
             saldo_in = c2.number_input("Nominal Saldo", value=2530133.0)
-            btn = st.form_submit_button("Analisis Sekarang")
+            btn = st.form_submit_button("Cek Collectibility")
             
         if btn:
             f_enc = fcode_list.index(f_in) + 1
             os_c = get_qcut_label(os_in, df_ref['OS'])
             disb_c = get_qcut_label(disb_in, df_ref['Disb'])
             saldo_c = get_qcut_label(saldo_in, df_ref['Saldo_Rekening'])
-            
             X = pd.DataFrame([[f_enc, os_c, disb_c, saldo_c]], columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
             pred = model.predict(X)[0] + 1
             
-            # --- LOGIKA WARNA PASTEL & STATUS ---
-            if pred == 1:
-                bg, txt, status = "#D4EDDA", "#155724", "LANCAR"
-            elif pred <= 4:
-                bg, txt, status = "#FFF3CD", "#856404", "DALAM PENGAWASAN (DPK)"
-            else:
-                bg, txt, status = "#F8D7DA", "#721C24", "NON-PERFORMING LOAN (NPL)"
+            if pred == 1: bg, txt, status = "#D4EDDA", "#155724", "LANCAR"
+            elif pred <= 4: bg, txt, status = "#FFF3CD", "#856404", "DALAM PENGAWASAN (DPK)"
+            else: bg, txt, status = "#F8D7DA", "#721C24", "NON-PERFORMING LOAN (NPL) ATAU MACET"
 
             st.markdown(f"""
                 <div style="background-color: {bg}; padding: 35px; border-radius: 15px; border: 1px solid {txt}33; text-align: center;">
-                    <p style="color: {txt}; font-size: 18px; font-weight: bold; margin: 0; opacity: 0.8;">HASIL PREDIKSI AI</p>
+                    <p style="color: {txt}; font-size: 18px; font-weight: bold; margin: 0;">HASIL PREDIKSI AI</p>
                     <h1 style="color: {txt}; font-size: 64px; margin: 10px 0;">Collectibility {pred}</h1>
-                    <p style="color: {txt}; font-size: 26px; font-weight: 500; margin: 0; letter-spacing: 1px;">{status}</p>
+                    <p style="color: {txt}; font-size: 26px; font-weight: 500; margin: 0;">{status}</p>
                 </div>
             """, unsafe_allow_html=True)
-            st.write("")
-            st.info(f"Analisis dilakukan terhadap nasabah unit {f_in}. Fitur finansial dikonversi ke skala persentil (1-10) sebelum diproses oleh model XGBoost.")
 
+    # --- TAB 2: BATCH UPLOAD ---
+    with t2:
+        st.subheader("Upload Batch File (CSV)")
+        st.write("Pastikan file memiliki kolom: `FCode`, `OS`, `Disb`, `Saldo_Rekening`")
+        
+        up_file = st.file_uploader("Pilih file CSV", type="csv")
+        
+        if up_file is not None:
+            df_up = pd.read_csv(up_file)
+            st.write("Preview Data yang Di-upload:")
+            st.dataframe(df_up.head())
+            
+            if st.button("Cek Collectibility"):
+                results = []
+                # Loading bar untuk estetika
+                progress_bar = st.progress(0)
+                
+                for i, row in df_up.iterrows():
+                    # 1. Encoding FCode
+                    f_val = fcode_list.index(row['FCode']) + 1 if row['FCode'] in fcode_list else 1
+                    # 2. Transformasi ke Kategori (Percentile)
+                    os_c = get_qcut_label(row['OS'], df_ref['OS'])
+                    disb_c = get_qcut_label(row['Disb'], df_ref['Disb'])
+                    saldo_c = get_qcut_label(row['Saldo_Rekening'], df_ref['Saldo_Rekening'])
+                    
+                    # 3. Predict
+                    X_batch = pd.DataFrame([[f_val, os_c, disb_c, saldo_c]], 
+                                          columns=['FCode', 'OS (Category)', 'Disb (Category)', 'Saldo (Category)'])
+                    p = model.predict(X_batch)[0] + 1
+                    results.append(p)
+                    
+                    # Update progress bar
+                    progress_bar.progress((i + 1) / len(df_up))
+                
+                # Tambahkan hasil ke dataframe
+                df_up['Prediksi_Collectibility'] = results
+                
+                st.success(f"Berhasil memproses {len(df_up)} data nasabah!")
+                st.dataframe(df_up)
+                
+                # Fitur Download Hasil
+                csv_download = df_up.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Hasil Prediksi (CSV)",
+                    data=csv_download,
+                    file_name="hasil_prediksi_batch.csv",
+                    mime="text/csv"
+                )
 # ==========================================
 # LAMAN 3: ANALYTICS
 # ==========================================
