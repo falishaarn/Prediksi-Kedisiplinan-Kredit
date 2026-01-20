@@ -75,7 +75,7 @@ with st.sidebar:
     if st.button("📈 Analytics Dashboard"): set_menu("📈 Analytics Dashboard")
     if st.button("🧠 Feature Insights"): set_menu("🧠 Feature Insights")
     st.markdown("---")
-    st.caption("v2.5 Enterprise Edition")
+    st.caption("Dibuat untuk Keperluan Tugas Akhir")
 
 df_ref = load_ref()
 model = load_xgb_model()
